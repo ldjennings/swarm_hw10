@@ -1,0 +1,315 @@
+# State enum encoding
+states = {}
+states.AUCTIONING   = 0
+states.CONSENSUSING = 1
+states.LOCKED_IN    = 2
+states.DONE         = 3
+
+bool = {}
+bool.TRUE 					= 1
+bool.FALSE 					= 0
+
+state = states.AUCTIONING
+#state = states.LOCKED_IN
+
+
+
+I_linear_accumulator = 0
+
+
+xi = { .0=0,            .1=0,   .2=0,   .3=0,   .4=0,   .5=0,   .6=0,   .7=0,   .8=0,   .9=0 }
+yi = { .0=0.0,          .1=0.0, .2=0.0, .3=0.0, .4=0.0, .5=0.0, .6=0.0, .7=0.0, .8=0.0, .9=0.0 }
+ci = { .0=123456789,    .1=0.0, .2=0.0, .3=0.0, .4=0.0, .5=0.0, .6=0.0, .7=0.0, .8=0.0, .9=0.0 }
+
+#
+# Executed once at init time
+#
+function init() {
+    reset()
+    bids = stigmergy.create(1)
+	task_claims = stigmergy.create(2)    
+}
+
+
+
+function log_once(robot, msg) {
+    if (id == robot) {
+        log(msg)
+    }
+}
+
+
+function all_tasks_claimed(){
+    # creating an empty xi like vector
+    tasks = { .0=0, .1=0, .2=0,.3=0,.4=0,.5=0, .6=0, .7=0, .8=0, .9=0 }
+
+    # reducing the secondary stigmergy to check if all tasks have been claimed (there is a one in every index in some table)
+    net_tasks = map(tasks, function(i,task) {
+      ret = task_claims.reduce(function(k,tk,robot, max) {
+            if (max == -1) {
+                return max
+            }
+            else if(tk[i] == 1) {
+                if (max == 1) {
+                    log("What the sigma (two robots have claimed the same task)")
+                    return -1
+                } 
+                return 1
+            }
+            return max
+        }, 0)
+    })
+
+    ret = reduce(net_tasks, function(index, task_status, acc) {
+        if (task_status != 1) {
+            acc = bool.FALSE
+        }
+        return acc
+    }, bool.TRUE)
+    log(ret)
+    return ret
+}
+
+function has_job(xi) {
+    return reduce(xi, function(key, value, accumulator){
+        if ((value == 1) or (accumulator == bool.TRUE)) {
+            return bool.TRUE
+        } else {
+			return bool.FALSE
+		}
+    }, bool.FALSE)
+}
+
+
+
+# returns whether or not it is possible for the robot to have a job, also does the stuff
+function auction_phase(ci, xi, yi) {
+    var xi_new = clone(xi)
+    var yi_new = clone(yi)
+
+    if(has_job(xi) == bool.FALSE) {
+        hi = map(yi, function(index, value){
+            if(ci[index] > value){
+                return bool.TRUE
+            } else {
+                return bool.FALSE
+            }
+        })
+
+        if(has_job(hi) == bool.TRUE){
+            max_bid_index = reduce(hi, function(index, value, accumulator) {
+                if(value == bool.TRUE) {
+                    if ((accumulator == -1) or (ci[index] > ci[accumulator])){
+                        return index
+                    } 
+                }
+			    return accumulator
+            }, -1)
+
+            if(max_bid_index != -1) {
+                xi_new[max_bid_index] = 1
+                yi_new[max_bid_index] = ci[max_bid_index]
+                return { .xi=xi_new, .yi=yi_new }
+            }
+        }
+    }
+    return bool.FALSE
+}
+
+
+function update_task(ci, xi, yi) {
+
+	return_to_auction = bool.FALSE
+    
+    # Make new xi
+    var xi_new = clone(xi)
+
+    # Calculate max bid across all the known bids
+    # also makes a new yi
+    var yi_new = map(yi, function(j,yij) {
+        return bids.reduce(function(k,yk,robot,max) {
+            if(yk[j] > max) { 
+                return yk[j]
+            }
+
+            return max
+        }, 0.0)
+    })
+
+    # Calculate ji
+    # ji is the index of the job that we think we have
+    var ji = reduce(xi, function(j,xij,a) {
+        if(xij == 1){
+            return j
+        }
+        return a
+
+    }, -1)
+
+    # Do I have a bid?
+
+    if(ji >= 0) {
+    # Is my bid still current?
+    if(yi_new[ji] > ci[ji]) {
+        # Someone else has a better bid than me
+        xi_new[ji] = 0
+		
+        log("Robot ", id, " had their bid fail")
+        
+        return_to_auction = bool.TRUE
+    }
+    }
+    return { .xi=xi_new, .yi=yi_new, .0=return_to_auction }
+}
+
+
+
+
+
+function wrap_to_pi(val) {
+    return (val + math.pi) % (2 * math.pi) - math.pi
+}
+
+
+function move_to_task(task_index){
+
+    x_target = tasks[task_index]["position"]["x"] 
+    y_target = tasks[task_index]["position"]["y"]
+    x = pose["position"]["x"]
+    y = pose["position"]["y"]
+
+    dx = x_target - x 			
+    dy = y_target - y
+
+    distance = math.sqrt(dx^2 + dy^2)
+
+    theta = pose["orientation"]["yaw"]
+    theta_target = math.atan(dy, dx)
+
+    heading_err = theta_target - theta
+
+    heading_err = wrap_to_pi(heading_err)
+
+    K_linear = 1.0 
+    K_angular = 2.0
+    I_linear = 0.001 
+
+    I_linear_accumulator = I_linear_accumulator + distance
+
+    # speed = K_linear * distance
+    speed = K_linear * distance + I_linear * I_linear_accumulator
+    angSpeed = K_angular * heading_err
+
+
+    if(distance < 0.05) {
+        state = states.DONE
+        log("Robot ", id, " thinks that it's done.")
+        set_wheels(0., 0.)
+    } else{
+       set_wheels(speed - angSpeed, speed + angSpeed)
+    }
+}
+
+
+
+
+#
+# Executed for each step
+#
+function step() {
+		if (ci[0] == 123456789){
+			calculate_bids()
+		}
+
+    if (state == states.AUCTIONING) {
+        log("Robot ", id, " is trying to auction.")
+        ret = auction_phase(ci, xi, yi)
+        if (ret != bool.FALSE){
+
+            xi = ret["xi"]
+            yi = ret["yi"]
+
+            bids.put(id, yi)
+
+            task_claims.put(id, xi)
+
+            state = states.CONSENSUSING
+        } else {
+            log("Robot ", id, " failed to find a job, retiring.")
+            state = states.DONE
+        }
+    }
+    else if (state == states.CONSENSUSING){
+        log("Robot ", id, " is trying to find a consensus")
+        ret = update_task(ci, xi, yi)
+    	log(id, " in consensus: ", ret["auctioning"])
+
+        xi = ret["xi"]
+        yi = ret["yi"]
+
+        bids.put(id, yi)
+
+        task_claims.put(id, xi)
+        log(size(ret))
+
+        if (ret[0] == bool.TRUE) {
+            state = state.AUCTIONING
+        } else if (all_tasks_claimed() == bool.TRUE) {
+            state = states.LOCKED_IN
+        }
+    }
+    else if (state == states.LOCKED_IN){
+        move_to_task(id)
+    }
+    else if (state == states.DONE) {
+
+    }
+    else { 
+        log("What the sigma")
+    }  
+}
+
+
+
+function calculate_bids() {
+    ci = map(ci, function(index, bid) {
+        x_target = tasks[index]["position"]["x"] 
+        y_target = tasks[index]["position"]["y"]
+        x = pose["position"]["x"]
+        y = pose["position"]["y"]
+
+        dx = x_target - x 
+        dy = y_target - y
+
+        distance_to_task = math.sqrt(dx^2 + dy^2)
+
+        task_reward = tasks[index]["reward"]
+
+        return math.exp(-distance_to_task) * task_reward
+    })
+}
+
+
+#			
+# Executed once upon resetting
+#
+function reset() {
+  # This assumes 10 tasks
+
+    xi = { .0=0, .1=0, .2=0, .3=0, .4=0, .5=0, .6=0, .7=0, .8=0, .9=0 }
+    yi = { .0=0.0, .1=0.0, .2=0.0, .3=0.0, .4=0.0, .5=0.0, .6=0.0, .7=0.0, .8=0.0, .9=0.0 }
+
+    state = states.AUCTIONING
+
+    I_linear_accumulator = 0
+		
+		# Apparently tasks only gets initialized once step starts executing, so it will just be nil at the start here
+    #calculate_bids()
+}
+
+#
+# Executed once upon closing ARGoS
+#
+function destroy() {
+  # Nothing to do
+}
