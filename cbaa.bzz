@@ -7,7 +7,7 @@ states.DONE         = 3
 
 bool = {}
 bool.TRUE 					= 1
-bool.FALSE 					= 0
+bool.FALSE					= 0
 
 state = states.AUCTIONING
 #state = states.LOCKED_IN
@@ -17,9 +17,9 @@ state = states.AUCTIONING
 I_linear_accumulator = 0
 
 
-xi = { .0=0,            .1=0,   .2=0,   .3=0,   .4=0,   .5=0,   .6=0,   .7=0,   .8=0,   .9=0 }
-yi = { .0=0.0,          .1=0.0, .2=0.0, .3=0.0, .4=0.0, .5=0.0, .6=0.0, .7=0.0, .8=0.0, .9=0.0 }
-ci = { .0=123456789,    .1=0.0, .2=0.0, .3=0.0, .4=0.0, .5=0.0, .6=0.0, .7=0.0, .8=0.0, .9=0.0 }
+xi = { .0=0,            .1=0,	.2=0,	.3=0,	.4=0,	.5=0,	.6=0,	.7=0,	.8=0,	.9=0 }
+yi = { .0=0.0,          .1=0.0,	.2=0.0,	.3=0.0,	.4=0.0,	.5=0.0,	.6=0.0,	.7=0.0,	.8=0.0,	.9=0.0 }
+ci = { .0=123456789,    .1=0.0,	.2=0.0,	.3=0.0,	.4=0.0,	.5=0.0,	.6=0.0,	.7=0.0,	.8=0.0,	.9=0.0 }
 
 #
 # Executed once at init time
@@ -27,7 +27,7 @@ ci = { .0=123456789,    .1=0.0, .2=0.0, .3=0.0, .4=0.0, .5=0.0, .6=0.0, .7=0.0, 
 function init() {
     reset()
     bids = stigmergy.create(1)
-	task_claims = stigmergy.create(2)    
+    task_claims = stigmergy.create(2)
 }
 
 
@@ -53,7 +53,7 @@ function all_tasks_claimed(){
                 if (max == 1) {
                     log("What the sigma (two robots have claimed the same task)")
                     return -1
-                } 
+                }
                 return 1
             }
             return max
@@ -66,6 +66,7 @@ function all_tasks_claimed(){
         }
         return acc
     }, bool.TRUE)
+
     log(ret)
     return ret
 }
@@ -75,8 +76,8 @@ function has_job(xi) {
         if ((value == 1) or (accumulator == bool.TRUE)) {
             return bool.TRUE
         } else {
-			return bool.FALSE
-		}
+            return bool.FALSE
+        }
     }, bool.FALSE)
 }
 
@@ -101,9 +102,9 @@ function auction_phase(ci, xi, yi) {
                 if(value == bool.TRUE) {
                     if ((accumulator == -1) or (ci[index] > ci[accumulator])){
                         return index
-                    } 
+                    }
                 }
-			    return accumulator
+                return accumulator
             }, -1)
 
             if(max_bid_index != -1) {
@@ -119,8 +120,8 @@ function auction_phase(ci, xi, yi) {
 
 function update_task(ci, xi, yi) {
 
-	return_to_auction = bool.FALSE
-    
+    return_to_auction = bool.FALSE
+
     # Make new xi
     var xi_new = clone(xi)
 
@@ -128,7 +129,7 @@ function update_task(ci, xi, yi) {
     # also makes a new yi
     var yi_new = map(yi, function(j,yij) {
         return bids.reduce(function(k,yk,robot,max) {
-            if(yk[j] > max) { 
+            if(yk[j] > max) {
                 return yk[j]
             }
 
@@ -153,9 +154,9 @@ function update_task(ci, xi, yi) {
     if(yi_new[ji] > ci[ji]) {
         # Someone else has a better bid than me
         xi_new[ji] = 0
-		
+
         log("Robot ", id, " had their bid fail")
-        
+
         return_to_auction = bool.TRUE
     }
     }
@@ -173,12 +174,12 @@ function wrap_to_pi(val) {
 
 function move_to_task(task_index){
 
-    x_target = tasks[task_index]["position"]["x"] 
+    x_target = tasks[task_index]["position"]["x"]
     y_target = tasks[task_index]["position"]["y"]
     x = pose["position"]["x"]
     y = pose["position"]["y"]
 
-    dx = x_target - x 			
+    dx = x_target - x
     dy = y_target - y
 
     distance = math.sqrt(dx^2 + dy^2)
@@ -190,9 +191,9 @@ function move_to_task(task_index){
 
     heading_err = wrap_to_pi(heading_err)
 
-    K_linear = 1.0 
+    K_linear = 1.0
     K_angular = 2.0
-    I_linear = 0.001 
+    I_linear = 0.001
 
     I_linear_accumulator = I_linear_accumulator + distance
 
@@ -217,9 +218,9 @@ function move_to_task(task_index){
 # Executed for each step
 #
 function step() {
-		if (ci[0] == 123456789){
-			calculate_bids()
-		}
+        if (ci[0] == 123456789){
+            calculate_bids()
+        }
 
     if (state == states.AUCTIONING) {
         log("Robot ", id, " is trying to auction.")
@@ -242,7 +243,7 @@ function step() {
     else if (state == states.CONSENSUSING){
         log("Robot ", id, " is trying to find a consensus")
         ret = update_task(ci, xi, yi)
-    	log(id, " in consensus: ", ret["auctioning"])
+        log(id, " in consensus: ", ret["auctioning"])
 
         xi = ret["xi"]
         yi = ret["yi"]
@@ -264,21 +265,21 @@ function step() {
     else if (state == states.DONE) {
 
     }
-    else { 
+    else {
         log("What the sigma")
-    }  
+    }
 }
 
 
 
 function calculate_bids() {
     ci = map(ci, function(index, bid) {
-        x_target = tasks[index]["position"]["x"] 
+        x_target = tasks[index]["position"]["x"]
         y_target = tasks[index]["position"]["y"]
         x = pose["position"]["x"]
         y = pose["position"]["y"]
 
-        dx = x_target - x 
+        dx = x_target - x
         dy = y_target - y
 
         distance_to_task = math.sqrt(dx^2 + dy^2)
@@ -290,7 +291,7 @@ function calculate_bids() {
 }
 
 
-#			
+#
 # Executed once upon resetting
 #
 function reset() {
@@ -302,8 +303,8 @@ function reset() {
     state = states.AUCTIONING
 
     I_linear_accumulator = 0
-		
-		# Apparently tasks only gets initialized once step starts executing, so it will just be nil at the start here
+
+        # Apparently tasks only gets initialized once step starts executing, so it will just be nil at the start here
     #calculate_bids()
 }
 
