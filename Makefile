@@ -19,9 +19,11 @@ all:
 
 run:
 	@echo "$(GREEN)[Running $(TARGET)]$(NORMAL)"
-	@ argos3 -c $(TARGET)
+	@export BUZZ_INCLUDE_PATH=/usr/local/share/buzz/include && argos3 -c $(TARGET)
 
 clean:
-	@ echo "$(GREEN)[Cleaning]$(NORMAL)"
-	@ rm -rf build
-	@ rm data.dat
+	@ echo "$(RED)[Cleaning]$(NORMAL)"
+	-@rm -rf build
+	-@rm data.dat
+	-@rm *.bdb
+	-@rm *.bo
