@@ -19,11 +19,10 @@ all:
 
 run:
 	@echo "$(GREEN)[Running $(TARGET)]$(NORMAL)"
-	@export BUZZ_INCLUDE_PATH=/usr/local/share/buzz/include && argos3 -c $(TARGET)
+	@export QT_STYLE_OVERRIDE=Windows && export BUZZ_INCLUDE_PATH=/usr/local/share/buzz/include && argos3 -c $(TARGET)
 
 clean:
 	@ echo "$(RED)[Cleaning]$(NORMAL)"
 	-@rm -rf build
 	-@rm data.dat
-	-@rm *.bdb
-	-@rm *.bo
+	-@rm *.bdb *.bo bzz.*

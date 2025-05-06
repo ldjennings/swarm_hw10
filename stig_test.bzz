@@ -4,17 +4,81 @@
 # Use Ctrl + Click (Cmd + Click on Mac) to move a selected robot to a different location
 
 
+function isolate_execution(robot, thingy) {
+    if(id == robot) {
+        thingy()
+    }
+}
+
+function break_execution() {
+    example = 1
+		log(example.test)
+}
+
+function log_table(my_table) {
+		foreach(my_table, function(key, value) {
+				log("Position ", key,": ", value)
+		})
+}
+
+
+bool = {}
+bool.TRUE 					= 1
+bool.FALSE					= 0
+
 
 # Put your global variables here
 
 xi = { .0=0, .1=0, .2=0, .3=0, .4=0, .5=0, .6=0, .7=0, .8=0, .9=0 }
 yi = { .0=0.0, .1=0.0, .2=0.0, .3=0.0, .4=0.0, .5=0.0, .6=0.0, .7=0.0, .8=0.0, .9=0.0 }
 
+function all_tasks_claimed(stig){
+    # creating an empty xi like vector
+    temp_tasks = { .0=0, .1=0, .2=0,.3=0,.4=0,.5=0, .6=0, .7=0, .8=0, .9=0 }
+
+    # reducing the secondary stigmergy to check if all tasks have been claimed (there is a one in every index in some table)
+    net_tasks = map(temp_tasks, function(i,task) {
+      return stig.reduce(function(k,tk,robot, max) {
+            if (max == -1) {
+                return max
+            }
+            else if(tk[i] == 1) {
+                if (max == 1) {
+                    log("What the sigma (two robots have claimed the same task)")
+                    return -1
+                }
+                return 1
+            }
+            return max
+        }, 0)
+			
+    })
+
+    #isolate_execution(1, function() {log("Net tasks Third item: ", net_tasks[3])})
+		log_table(net_tasks)
+		#break_execution()
+    
+    ret = reduce(net_tasks, function(index, task_status, acc) {
+        if (task_status != 1) {
+            acc = bool.FALSE
+        }
+        return acc
+    }, bool.TRUE)
+
+    return ret
+}
+
 # This function is executed every time you press the 'execute' button
 function init() {
     reset()
-    bids = stigmergy.create(1)
-		bids.put(id, yi)
+    task_claims = stigmergy.create(1)
+	# if((id == 1) or (id == 0)) {
+	# 		xi[id] = 1
+	# }
+	xi[id] = 1
+	
+
+	task_claims.put(id, xi)
 }
 
 
@@ -24,13 +88,14 @@ function init() {
 function step() {
    # put your code here
 	
-	if ( id == 1){
-		bids.foreach(function(key, value, robot_id){
-         log("Key ", key)
-         log("Value ", value)
-         log("ID ", robot_id)
-      })
-   }
+	#if ( id == 1){
+	#	bids.foreach(function(key, value, robot_id){
+   #      log("Return value ", key)
+
+   #   })
+   #}
+
+	isolate_execution(1,function() {log("Result of running all_claimed: ", all_tasks_claimed(task_claims))})
 }
 
 
