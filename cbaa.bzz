@@ -41,10 +41,10 @@ function log_once(robot, msg) {
 
 function all_tasks_claimed(){
     # creating an empty xi like vector
-    tasks = { .0=0, .1=0, .2=0,.3=0,.4=0,.5=0, .6=0, .7=0, .8=0, .9=0 }
+    temp_tasks = { .0=0, .1=0, .2=0,.3=0,.4=0,.5=0, .6=0, .7=0, .8=0, .9=0 }
 
     # reducing the secondary stigmergy to check if all tasks have been claimed (there is a one in every index in some table)
-    net_tasks = map(tasks, function(i,task) {
+    net_tasks = map(temp_tasks, function(i,task) {
       ret = task_claims.reduce(function(k,tk,robot, max) {
             if (max == -1) {
                 return max
@@ -254,7 +254,7 @@ function step() {
         log(size(ret))
 
         if (ret[0] == bool.TRUE) {
-            state = state.AUCTIONING
+            state = states.AUCTIONING
         } else if (all_tasks_claimed() == bool.TRUE) {
             state = states.LOCKED_IN
         }
